@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Values Survey — Equality, Innovation, Ethics</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 p-6">
+<div class="max-w-5xl mx-auto space-y-6">
+  <header class="text-center space-y-2">
+    <h1 class="text-3xl font-bold">Values Survey</h1>
+    <p class="text-gray-600">A = Equality · B = Innovation · C = Ethics</p>
+    <div class="mt-3 max-w-md mx-auto">
+      <label class="block text-sm font-medium mb-1">Your email (optional, to save results):</label>
+      <input id="email" type="email" class="w-full border rounded p-2" placeholder="you@example.com">
+    </div>
+  </header>
+
+  <!-- Email -->
+  <div>
+    <label class="block font-medium mb-1">Your email (to prevent duplicate responses):</label>
+    <input id="email" type="email" class="w-full border rounded p-2" placeholder="you@example.com">
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    <!-- Today Card -->
+    <div class="bg-white shadow rounded p-4 space-y-4">
+      <h2 class="text-lg font-semibold">Present (Today)</h2>
+      <div id="todayPlot" class="h-80"></div>
+
+      <div class="space-y-2">
+        <label>A (Equality): <span id="A_today">34</span></label>
+        <input type="range" id="A_today_slider" min="0" max="100" value="34" class="w-full">
+
+        <label>B (Innovation): <span id="B_today">33</span></label>
+        <input type="range" id="B_today_slider" min="0" max="100" value="33" class="w-full">
+
+        <label>C (Ethics): <span id="C_today">33</span></label>
+        <input type="range" id="C_today_slider" min="0" max="100" value="33" class="w-full">
+      </div>
+      <p class="text-xs text-gray-500">Sliders auto-normalize to sum = 100.</p>
+    </div>
+
+    <!-- 2075 Card -->
+    <div class="bg-white shadow rounded p-4 space-y-4">
+      <h2 class="text-lg font-semibold">Year 2075</h2>
+      <div id="futurePlot" class="h-80"></div>
+
+      <div class="space-y-2">
+        <label>A (Equality): <span id="A_future">34</span></label>
+        <input type="range" id="A_future_slider" min="0" max="100" value="34" class="w-full">
+
+        <label>B (Innovation): <span id="B_future">33</span></label>
+        <input type="range" id="B_future_slider" min="0" max="100" value="33" class="w-full">
+
+        <label>C (Ethics): <span id="C_future">33</span></label>
+        <input type="range" id="C_future_slider" min="0" max="100" value="33" class="w-full">
+      </div>
+      <p class="text-xs text-gray-500">Sliders auto-normalize to sum = 100.</p>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <button id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded">
+    Submit my responses
+  </button>
+  <p id="msg" class="text-center text-sm font-medium"></p>
+</div>
+
+<script>
+function renderPlot(div, A, B, C, title) {
+  Plotly.newPlot(div, [{
+    type: 'scatterternary', mode: 'markers', a:[A], b:[B], c:[C], marker:{size:12}
+  }], {
+    ternary:{sum:100, aaxis:{title:"Equality"}, baxis:{title:"Innovation"}, caxis:{title:"Ethics"}},
+    margin:{t:30}, title
+  });
+}
+
+function normalize(idA,idB,idC,idPlot,labelA,labelB,labelC,title){
+  let A=+document.getElementById(idA).value;
+  let B=+document.getElementById(idB).value;
+  let C=+document.getElementById(idC).value;
+  let total=A+B+C;
+  A=Math.round(A/total*100); B=Math.round(B/total*100); C=100-A-B;
+  document.getElementById(idA).value=A;
+  document.getElementById(idB).value=B;
+  document.getElementById(idC).value=C;
+  document.getElementById(labelA).textContent=A;
+  document.getElementById(labelB).textContent=B;
+  document.getElementById(labelC).textContent=C;
+  renderPlot(idPlot,A,B,C,title);
+}
+
+["today","future"].forEach(period=>{
+  ["A","B","C"].forEach(axis=>{
+    document.getElementById(`${axis}_${period}_slider`).oninput=()=>
+      normalize(`A_${period}_slider`,`B_${period}_slider`,`C_${period}_slider`,`${period}Plot`,
+                `A_${period}`,`B_${period}`,`C_${period}`,period=="today"?"Today":"2075");
+  });
+});
+
+normalize("A_today_slider","B_today_slider","C_today_slider","todayPlot","A_today","B_today","C_today","Today");
+normalize("A_future_slider","B_future_slider","C_future_slider","futurePlot","A_future","B_future","C_future","2075");
+
+// ---- Google Sheets Submit ----
+const endpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_URL_HERE"; // Replace after creating script
+
+document.getElementById("submitBtn").onclick = async () => {
+  const email = document.getElementById("email").value;
+  if(!email) return document.getElementById("msg").textContent = "Please enter your email.";
+
+  const data = {
+    email,
+    A_today: document.getElementById("A_today_slider").value,
+    B_today: document.getElementById("B_today_slider").value,
+    C_today: document.getElementById("C_today_slider").value,
+    A_future: document.getElementById("A_future_slider").value,
+    B_future: document.getElementById("B_future_slider").value,
+    C_future: document.getElementById("C_future_slider").value
+  };
+
+  document.getElementById("msg").textContent = "Submitting...";
+
+  try {
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify(data)
+    });
+    document.getElementById("msg").textContent = "✅ Response submitted!";
+  } catch {
+    document.getElementById("msg").textContent = "⚠️ Error submitting. Check setup.";
+  }
+};
+</script>
+</body>
+</html>
